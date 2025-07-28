@@ -1,0 +1,74 @@
+openapi: 3.0.0
+info:
+  title: Portfolio Manager Watchlist API
+  version: 1.0.0
+paths:
+  /api/watchlist:
+    get:
+      summary: Get all watchlist stocks
+      responses:
+        '200':
+          description: A list of watchlist stocks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: integer }
+                    symbol: { type: string }
+                    name: { type: string }
+                    sector: { type: string }
+                    description: { type: string }
+                    current_price: { type: number }
+                    last_updated: { type: string, format: date }
+  /api/portfolio:
+    get:
+      summary: Get all portfolio items
+      responses:
+        '200':
+          description: A list of portfolio items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: integer }
+                    symbol: { type: string }
+                    volume: { type: integer }
+    post:
+      summary: Add a stock to portfolio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                symbol: { type: string }
+                volume: { type: integer }
+      responses:
+        '201':
+          description: Item added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  id: { type: integer }
+  /api/portfolio/{id}:
+    delete:
+      summary: Delete a portfolio item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Item removed
+  
