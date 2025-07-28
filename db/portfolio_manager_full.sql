@@ -1,3 +1,5 @@
+create database portfolio_db;
+use portfolio_db;
 
 CREATE TABLE cash_balance (
     id INT PRIMARY KEY AUTO_INCREMENT,

@@ -1,0 +1,27 @@
+<!-- public/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cash Page</title>
+</head>
+<body>
+  <h1>💰 Cash Overview</h1>
+  <div id="cash-info">Loading...</div>
+
+  <script>
+    fetch('/api/cash')
+      .then(response => response.json())
+      .then(data => {
+        const info = `
+          <p>Balance: ${data.currency} ${data.balance}</p>
+          <h3>Transactions:</h3>
+          <ul>
+            ${data.transactions.map(tx => `<li>${tx.date} - ${tx.type}: ${data.currency} ${tx.amount}</li>`).join('')}
+          </ul>
+        `;
+        document.getElementById('cash-info').innerHTML = info;
+      });
+  </script>
+</body>
+</html>
