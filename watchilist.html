@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>My Watchlist</title>
+  <style>
+    body {
+      background: #111;
+      color: #eee;
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    h1, h2 {
+      color: #4daaf2;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #444;
+    }
+    th {
+      text-align: left;
+      color: #aaa;
+    }
+    tr:hover {
+      background: #222;
+    }
+    .green { color: lightgreen; }
+    .red { color: salmon; }
+    a {
+      color: #4daaf2;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    input {
+      padding: 8px;
+      border-radius: 4px;
+      border: none;
+      width: 200px;
+    }
+    button {
+      padding: 8px 12px;
+      margin-left: 10px;
+      background: #4daaf2;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #358bd5;
+    }
+    #errorMessage {
+      color: salmon;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>📈 My Watchlist</h1>
+
+  <h2>Add Stock</h2>
+  <input type="text" id="symbolInput" placeholder="Enter symbol (e.g., AAPL)" />
+  <button onclick="addStock()">Add</button>
+  <div id="errorMessage"></div>
+
+  <table id="stockTable">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Symbol</th>
+        <th>Price</th>
+        <th>Change</th>
+        <th>% Change</th>
+        <th>Market Time</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const apiUrl = 'http://localhost:3000/api/watchlist';
+
+    function loadWatchlist() {
+      fetch(apiUrl)
+        .then(res => res.json())
+        .then(data => {
+          const tbody = document.querySelector('#stockTable tbody');
+          tbody.innerHTML = '';
+          data.forEach(stock => {
+            const yahooUrl = `https://finance.yahoo.com/quote/${stock.symbol}`;
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td><a href="${yahooUrl}" target="_blank">${stock.name}</a></td>
+              <td>${stock.symbol}</td>
+              <td>$${stock.price.toFixed(2)}</td>
+              <td class="${stock.change >= 0 ? 'green' : 'red'}">${stock.change.toFixed(2)}</td>
+              <td class="${stock.percentChange >= 0 ? 'green' : 'red'}">${(stock.percentChange * 100).toFixed(2)}%</td>
+              <td>${new Date(stock.marketTime).toLocaleString()}</td>
+              <td><button onclick="deleteStock('${stock.symbol}')">❌</button></td>
+            `;
+            tbody.appendChild(row);
+          });
+        })
+        .catch(err => {
+          document.querySelector('#errorMessage').textContent = 'Failed to load watchlist.';
+          console.error(err);
+        });
+    }
+
+    function addStock() {
+      const symbol = document.getElementById('symbolInput').value.trim();
+      if (!symbol) return;
+
+      fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbol })
+      })
+        .then(res => res.json())
+        .then(data => {
+          loadWatchlist();
+          document.getElementById('symbolInput').value = '';
+          document.getElementById('errorMessage').textContent = '';
+        })
+        .catch(err => {
+          document.getElementById('errorMessage').textContent = 'Failed to add stock.';
+          console.error(err);
+        });
+    }
+
+    function deleteStock(symbol) {
+      fetch(`${apiUrl}/${symbol}`, { method: 'DELETE' })
+        .then(() => loadWatchlist())
+        .catch(err => {
+          document.getElementById('errorMessage').textContent = 'Failed to delete stock.';
+          console.error(err);
+        });
+    }
+
+    loadWatchlist();
+  </script>
+</body>
+</html>
