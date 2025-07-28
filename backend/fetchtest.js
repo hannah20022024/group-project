@@ -33,8 +33,6 @@
 // // }
 
 
-// // export default fetchTest;
-
 function sellStock(portfolioId, volume) {
     const data = {
         portfolio_id: portfolioId,
@@ -61,4 +59,29 @@ function sellStock(portfolioId, volume) {
 sellStock(1, 10);  
 
 
+// function addCashToAccount(cashAmount) {
+//     const data = {
+//         cash: cashAmount
+//     };
 
+//     fetch('http://localhost:3000/account/cash/add', {
+//         method: 'PATCH',  
+//         headers: {
+//             'Content-Type': 'application/json'  
+//         },
+//         body: JSON.stringify(data)  
+//     })
+//     .then(response => response.json())  // Parse the JSON response
+//     .then(data => {
+//         if (data.message) {
+//             console.log('Success:', data.message);  
+//         } else {
+//             console.log('Error:', data.error);  
+//         }
+//     })
+//     .catch(error => {
+//         console.error('Error:', error);  
+      
+//     });
+// }
+// addCashToAccount(100); 
