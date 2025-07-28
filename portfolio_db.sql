@@ -36,7 +36,11 @@ CREATE TABLE IF NOT EXISTS portfolio_transactions (
     volume INT NOT NULL,
     price DECIMAL(10,2) NOT NULL,
     transaction_date DATE NOT NULL,
+
     FOREIGN KEY (portfolio_id) REFERENCES portfolio(id) ON DELETE CASCADE,
+
+    FOREIGN KEY (portfolio_id) REFERENCES portfolio(id),
+
     CONSTRAINT check_transaction_volume CHECK (volume > 0),
     CONSTRAINT check_price CHECK (price >= 0)
 );
