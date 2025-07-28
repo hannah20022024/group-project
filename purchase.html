@@ -1,0 +1,38 @@
+// 🔹 Buy API
+app.post('/api/portfolio/buy', async (req, res) => {
+  const { symbol, shares } = req.body;
+
+  if (!symbol || !shares || shares <= 0) {
+    return res.status(400).json({ error: 'Invalid input' });
+  }
+
+  try {
+    const [rows] = await db.query('SELECT * FROM stock_pool WHERE symbol = ?', [symbol]);
+    if (rows.length === 0) {
+      return res.status(400).json({ error: 'Symbol not in watchlist' });
+    }
+
+    const quote = await yahooFinance.quote({ symbol, modules: ['price'] });
+    const price = quote?.price?.regularMarketPrice;
+    if (!price) return res.status(500).json({ error: 'Failed to fetch current price' });
+
+    const today = new Date().toISOString().split('T')[0];
+
+    await db.query(
+      'INSERT INTO userhave (symbol, shares, buy_price, buy_date) VALUES (?, ?, ?, ?)',
+      [symbol, shares, price, today]
+    );
+
+    res.json({
+      message: '✅ Purchase successful',
+      symbol,
+      shares,
+      buy_price: price,
+      buy_date: today
+    });
+
+  } catch (error) {
+    console.error('Buy error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
