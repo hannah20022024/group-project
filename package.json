@@ -2,6 +2,7 @@
   "name": "group-project",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
   "scripts": {
 
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -27,13 +28,6 @@
   "homepage": "https://github.com/hannah20022024/group-project#readme",
   "description": "",
   "dependencies": {
-
-    "express": "^5.1.0",
-    "mysql2": "^3.14.2",
-    "swagger-ui-express": "^5.0.1",
-    "yahoo-finance2": "^2.13.3",
-    "yamljs": "^0.3.0"
-
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "mysql2": "^3.14.2"
