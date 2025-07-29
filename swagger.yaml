@@ -16,13 +16,14 @@ paths:
                 items:
                   type: object
                   properties:
-                    id: { type: integer }
                     symbol: { type: string }
                     name: { type: string }
+                    price : {type: number }
                     sector: { type: string }
-                    description: { type: string }
-                    current_price: { type: number }
-                    last_updated: { type: string, format: date }
+                    change: {type: number }
+                    percentChange: { type: string }
+                    marketTime: { type: string, format: date }
+                    currency: { type: string}
     post:
       summary: add a stock to watchlist
       requestBody:
@@ -45,16 +46,14 @@ paths:
                   properties:
                     message: { type: string }
                     symbol: { type: string }
+  /api/watchlist/{symbol}:
     delete:
       summary: delete a stock from watchlist
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                symbol: { type: string }
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema: { type: integer }
       responses:
         '200':
           description: delete success
@@ -67,7 +66,84 @@ paths:
                   properties:
                     message: { type: string }
                     symbol: { type: string }
-
+  /api/strategy/{symbol}:
+    get:
+      summary: Get strategy for stocks
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: get strategy success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  symbol: { type: string }
+                  currentPrice : { type: float }
+                  suggestion : { type: string }
+                  dates : {type : integer}
+                  closes : {type : float}
+                  sma7: {type : float}
+                  sma14: {type : float}
+  /api/simulate-dca/{symbol}:
+    get:
+      summary: Get all simulate-dca items
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: get all simulate-dca items
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  symbol: { type: string }
+                  dca: 
+                    type: object    
+                    totalInvested: { type: number }
+                    totalShares: { type: number }
+                    averageCostPerShare: { type: number }
+                    currentValue: { type: number }
+                    gainLoss: { type: number }
+                    gainLossPercent: { type: number }
+                    dates: { type: number }
+                    closes: { type: number }
+  /api/simulate-dca:
+    post:
+      summary: add simulate-dca item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                symbol: { type: string }
+                amount: { type: float }
+                weeks: { type: date }
+        responses:
+          '200':
+          content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    symbol: { type: string }
+                    dca:
+                      type: object
+                      totalInvested: { type: float }
+                      totalShares: { type: float }
+                      finalValue: { type: float }
+                      profit: { type: float }
+                      percent: { type: float }
   /api/portfolio:
     get:
       summary: Get all portfolio items
@@ -81,84 +157,27 @@ paths:
                 items:
                   type: object
                   properties:
-                    id: { type: integer }
                     symbol: { type: string }
-                    volume: { type: integer }
-    post:
-      summary: Add a stock to portfolio
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                symbol: { type: string }
-                volume: { type: integer }
+                    share: {type: float }
+                    averagePrice: { type: float }
+                    totalValue: { type: float }
+                    gain: {type: float}
+                    gainPercent: {type: float}
+                    currency: { type: string }
+                    marketTime: { type: string , format: date}  
+  /api/cashbalance:
+    get:
+      summary: get cash balance
       responses:
-        '201':
-          description: Item added
+        '200':
+          description: get cash balance successfully 
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  message: { type: string }
-                  id: { type: integer }
-  /api/portfolio/{id}:
-    delete:
-      summary: Delete a portfolio item
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: integer }
-      responses:
-        '200':
-          description: Item removed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message: { type: string }     
-  /api/portfolio/{symbol}/details:
-    get:
-      summary: get stock details
-      parameters:
-        - symbol: id
-      responses:
-        '200':
-          description: delete success
-          content:
-            application/json:
-              schema:
-                type: object
-                  properties:
-                    symbol: { type: string }
-                    name: { type: string }
-                    current_price: { type: number }
-                    investmentAmount: { type: number }
-                    historicalPrices:
-                    type: array
-                    items:
-                      data: {type:string}
-                      price: {type:number}
-  /account/cash/add:
-    get:
-      summary: add cash to account
-      responses:
-        '200':
-          description: add successfully 
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    message : { type: string }
-  /portfolio/buy:
+                  amount : { type: float }
+  /api/portfolio/buy:
     post:
       summary: buy a stock to portfolio
       requestBody:
@@ -170,19 +189,20 @@ paths:
               properties:
                 symbol: { type: string }
                 volume: { type: integer }
-                price: { type: number }
       responses:
         '200':
           description: buy successfully
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    message: { type: string }
-  /portfolio/sell:
+                type: object
+                properties:
+                  message: { type: string }
+                  symbol: {type: string}
+                  share: {type: integer}
+                  buy_price: {type: float}
+                  buy_date: {type: date}
+  /api/portfolio/sell:
     post:
       summary: sell a stock to portfolio
       requestBody:
@@ -193,9 +213,9 @@ paths:
               type: object
               properties:
                 symbol: { type: string }
-                volume: { type: integer }
+                shares: { type: float }
       responses:
-        '201':
+        '200':
           description: Item sell success
           content:
             application/json:
@@ -203,32 +223,7 @@ paths:
                 type: object
                 properties:
                   message: { type: string }
-  /api/getCash:
-    get:
-      summary: Get account balance
-      responses:
-        '200':
-          description: account balance
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  account: { type: number }
-  /api/historyBuy:
-    get:
-      summary: Get history of buy
-      responses:
-        '200':
-          description: history list
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id: { type: integer }
-                    symbol: { type: string }
-                    price: { type: number }
-                    volume: { type: integer }
+                  symbol: {type: string}
+                  sharesSold: {type: float}
+                  sellPrice: {type: float}
+                  totalProceeds: {type: float}
