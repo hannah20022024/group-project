@@ -2,12 +2,14 @@ import express from 'express';
 import cors from 'cors';
 import yahooFinance from 'yahoo-finance2';
 import mysql from 'mysql2/promise';
-
+import swaggerUi from 'swagger-ui-express';
+import yaml from 'yamljs';
 const app = express();
 app.use(cors());
 app.use(express.json());
 const PORT = 3010;
-
+const swaggerDocument = yaml.load('./swagger.yaml');
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 let db; 
 let watchlist = []; 
