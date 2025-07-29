@@ -1,25 +1,17 @@
-import express from 'express';
-// import indexRouter from './routes/index.js';
-import pool from './config/db.js';
+const express = require("express");
+const cors = require("cors");
+const stockRoutes = require("./routes/stockRoutes");
+require("dotenv").config();
 
 const app = express();
 
-async function start() {
-  try {
-    // 测试数据库连接
-    const [rows] = await pool.query('SELECT * from holdings');
-    console.log('✅ MySQL 连接成功:', rows);
+app.use(cors());
+app.use(express.json());
 
-    // Use Router
-    // app.use('/', indexRouter);
+// Routes
+app.use("/api/stocks", stockRoutes);
 
-    app.listen(3000, () => {
-      console.log('🚀 服务器启动：http://localhost:3000');
-    });
-  } catch (err) {
-    console.error('❌ 数据库连接失败:', err);
-    process.exit(1);
-  }
-}
-
-start();
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
