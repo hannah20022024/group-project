@@ -1,0 +1,229 @@
+openapi: 3.0.0
+info:
+  title: Portfolio Manager Watchlist API
+  version: 1.0.0
+paths:
+  /api/watchlist:
+    get:
+      summary: Get all watchlist stocks
+      responses:
+        '200':
+          description: A list of watchlist stocks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    symbol: { type: string }
+                    name: { type: string }
+                    price : {type: number }
+                    sector: { type: string }
+                    change: {type: number }
+                    percentChange: { type: string }
+                    marketTime: { type: string, format: date }
+                    currency: { type: string}
+    post:
+      summary: add a stock to watchlist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                symbol: { type: string }
+      responses:
+        '201':
+          description: add success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    message: { type: string }
+                    symbol: { type: string }
+  /api/watchlist/{symbol}:
+    delete:
+      summary: delete a stock from watchlist
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: delete success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    message: { type: string }
+                    symbol: { type: string }
+  /api/strategy/{symbol}:
+    get:
+      summary: Get strategy for stocks
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: get strategy success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  symbol: { type: string }
+                  currentPrice : { type: float }
+                  suggestion : { type: string }
+                  dates : {type : integer}
+                  closes : {type : float}
+                  sma7: {type : float}
+                  sma14: {type : float}
+  /api/simulate-dca/{symbol}:
+    get:
+      summary: Get all simulate-dca items
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: get all simulate-dca items
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  symbol: { type: string }
+                  dca: 
+                    type: object    
+                    totalInvested: { type: number }
+                    totalShares: { type: number }
+                    averageCostPerShare: { type: number }
+                    currentValue: { type: number }
+                    gainLoss: { type: number }
+                    gainLossPercent: { type: number }
+                    dates: { type: number }
+                    closes: { type: number }
+  /api/simulate-dca:
+    post:
+      summary: add simulate-dca item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                symbol: { type: string }
+                amount: { type: float }
+                weeks: { type: date }
+        responses:
+          '200':
+          content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    symbol: { type: string }
+                    dca:
+                      type: object
+                      totalInvested: { type: float }
+                      totalShares: { type: float }
+                      finalValue: { type: float }
+                      profit: { type: float }
+                      percent: { type: float }
+  /api/portfolio:
+    get:
+      summary: Get all portfolio items
+      responses:
+        '200':
+          description: A list of portfolio items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    symbol: { type: string }
+                    share: {type: float }
+                    averagePrice: { type: float }
+                    totalValue: { type: float }
+                    gain: {type: float}
+                    gainPercent: {type: float}
+                    currency: { type: string }
+                    marketTime: { type: string , format: date}  
+  /api/cashbalance:
+    get:
+      summary: get cash balance
+      responses:
+        '200':
+          description: get cash balance successfully 
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  amount : { type: float }
+  /api/portfolio/buy:
+    post:
+      summary: buy a stock to portfolio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                symbol: { type: string }
+                volume: { type: integer }
+      responses:
+        '200':
+          description: buy successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  symbol: {type: string}
+                  share: {type: integer}
+                  buy_price: {type: float}
+                  buy_date: {type: date}
+  /api/portfolio/sell:
+    post:
+      summary: sell a stock to portfolio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                symbol: { type: string }
+                shares: { type: float }
+      responses:
+        '200':
+          description: Item sell success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  symbol: {type: string}
+                  sharesSold: {type: float}
+                  sellPrice: {type: float}
+                  totalProceeds: {type: float}

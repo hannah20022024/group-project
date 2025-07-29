@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>资产现状 - 仪表盘</title>
+    <script src="https://cdn.staticfile.org/echarts/4.3.0/echarts.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: "Microsoft YaHei", sans-serif;
+            display: flex;
+            height: 100vh;
+        }
+
+        /* 侧边栏样式 */
+        .sidebar {
+            width: 220px;
+            background: #2c3e50;
+            color: white;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar h2 {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #34495e;
+        }
+
+        .sidebar a {
+            padding: 15px 20px;
+            color: white;
+            text-decoration: none;
+            display: block;
+            transition: background 0.3s;
+        }
+
+        .sidebar a:hover,
+        .sidebar a.active {
+            background: #1abc9c;
+        }
+
+        /* 主体内容 */
+        .content {
+            flex: 1;
+            padding: 30px;
+            background: #ecf0f1;
+            overflow-y: auto;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        h1 {
+            color: #2c3e50;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            margin-top: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .box {
+            width: 300px;
+            height: 300px;
+            background-color: rgb(188, 227, 236);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar">
+        <h2>资产管理</h2>
+        <a href="#overview" class="active">资产总览</a>
+        <a href="#income">收入情况</a>
+        <a href="#expenses">支出情况</a>
+        <a href="#investments">投资状况</a>
+        <a href="#liabilities">负债情况</a>
+    </div>
+
+    <div class="content">
+        <div id="overview" class="section active">
+            <h1>资产总览</h1>
+            <button>cash add</button>
+            <div class="card">
+                <div class="">
+                    <p id="cash-info">总资产：￥2,500,000</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="income" class="section">
+            <h1>收入情况</h1>
+            <div class="card">
+                <p>工资收入：￥50,000/月</p>
+                <p>理财收益：￥8,000/月</p>
+                <p>其他收入：￥5,000/月</p>
+            </div>
+        </div>
+
+        <div id="expenses" class="section">
+            <h1>支出情况</h1>
+            <div class="card">
+                <p>日常消费：￥20,000/月</p>
+                <p>住房贷款：￥10,000/月</p>
+                <p>教育支出：￥5,000/月</p>
+            </div>
+        </div>
+
+        <div id="investments" class="section">
+            <h1>投资状况</h1>
+            <div class="card">
+                <p>股票：￥600,000</p>
+                <p>基金：￥400,000</p>
+                <p>房地产：￥800,000</p>
+            </div>
+        </div>
+
+        <div id="liabilities" class="section">
+            <h1>负债情况</h1>
+            <div class="card">
+                <p>住房贷款余额：￥500,000</p>
+                <p>信用卡负债：￥20,000</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const links = document.querySelectorAll('.sidebar a');
+        const sections = document.querySelectorAll('.section');
+
+        links.forEach(link => {
+            link.addEventListener('click', e => {
+                e.preventDefault();
+                // 切换侧边栏选中状态
+                links.forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+
+                // 显示对应的内容
+                sections.forEach(sec => sec.classList.remove('active'));
+                const target = document.querySelector(link.getAttribute('href'));
+                if (target) target.classList.add('active');
+            });
+        });
+    </script>
+
+    <script>
+        // //3.初始化实例对象 echarts.init(dom容器)
+        // var myChart = echarts.init(document.querySelector(".box"));
+        // //4.指定配置项和数据
+        // var option = {
+        //     title: {
+        //         text: 'ECharts 入门示例'
+        //     },
+        //     tooltip: {},
+        //     legend: {
+        //         data: ['销量']
+        //     },
+        //     xAxis: {
+        //         data: ["衬衫", "羊毛衫", "雪纺衫", "裤子", "高跟鞋", "袜子"]
+        //     },
+        //     yAxis: {},
+        //     series: [{
+        //         name: '销量',
+        //         type: 'bar',
+        //         data: [5, 20, 36, 10, 10, 20]
+        //     }]
+        // };
+        // //5.将配置项设置给echarts实例对象，使用刚指定的配置项和数据显示图表。
+        // myChart.setOption(option);
+
+        fetch('/api/getCash')
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+                const info = `<p>Balance: ${data.amount}</p>`;
+                document.getElementById('cash-info').innerHTML = info;
+            });
+
+    </script>
+
+</body>
+
+
+
+</html>
