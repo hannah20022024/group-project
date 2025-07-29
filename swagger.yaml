@@ -23,6 +23,51 @@ paths:
                     description: { type: string }
                     current_price: { type: number }
                     last_updated: { type: string, format: date }
+    post:
+      summary: add a stock to watchlist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                symbol: { type: string }
+      responses:
+        '201':
+          description: add success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    message: { type: string }
+                    symbol: { type: string }
+    delete:
+      summary: delete a stock from watchlist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                symbol: { type: string }
+      responses:
+        '200':
+          description: delete success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    message: { type: string }
+                    symbol: { type: string }
+
   /api/portfolio:
     get:
       summary: Get all portfolio items
@@ -60,21 +105,6 @@ paths:
                 properties:
                   message: { type: string }
                   id: { type: integer }
-    delete:
-      summary: delete a stock 
-      responses:
-        '200':
-          description: delete success
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id: { type: integer }
-                    symbol: { type: string }
-                    volume: { type: integer }
   /api/portfolio/{id}:
     delete:
       summary: Delete a portfolio item
@@ -86,6 +116,34 @@ paths:
       responses:
         '200':
           description: Item removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }     
+  /api/portfolio/{symbol}/details:
+    get:
+      summary: get stock details
+      parameters:
+        - symbol: id
+      responses:
+        '200':
+          description: delete success
+          content:
+            application/json:
+              schema:
+                type: object
+                  properties:
+                    symbol: { type: string }
+                    name: { type: string }
+                    current_price: { type: number }
+                    investmentAmount: { type: number }
+                    historicalPrices:
+                    type: array
+                    items:
+                      data: {type:string}
+                      price: {type:number}
   /account/cash/add:
     get:
       summary: add cash to account
@@ -124,8 +182,9 @@ paths:
                   type: object
                   properties:
                     message: { type: string }
-  portfolio/sell:
-    summary: sell a stock to portfolio
+  /portfolio/sell:
+    post:
+      summary: sell a stock to portfolio
       requestBody:
         required: true
         content:
@@ -137,7 +196,7 @@ paths:
                 volume: { type: integer }
       responses:
         '201':
-          description: Item sell failed
+          description: Item sell success
           content:
             application/json:
               schema:

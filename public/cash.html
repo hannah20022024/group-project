@@ -10,15 +10,12 @@
   <div id="cash-info">Loading...</div>
 
   <script>
-    fetch('/api/cash')
+    fetch('/api/getCash')
       .then(response => response.json())
       .then(data => {
+        console.log(data);
         const info = `
-          <p>Balance: ${data.currency} ${data.balance}</p>
-          <h3>Transactions:</h3>
-          <ul>
-            ${data.transactions.map(tx => `<li>${tx.date} - ${tx.type}: ${data.currency} ${tx.amount}</li>`).join('')}
-          </ul>
+          <p>Balance: ${data.amount}</p>
         `;
         document.getElementById('cash-info').innerHTML = info;
       });
