@@ -354,10 +354,17 @@ app.post('/api/portfolio/sell', async (req, res) => {
 
   const upperSymbol = symbol.toUpperCase();
   const today = new Date().toISOString().split('T')[0];
+  let sharesToSell = shares;
 
   try {
-    const [rows] = await db.execute('SELECT * FROM userhave WHERE symbol = ?', [upperSymbol]);
-    if (rows.length === 0 || rows[0].shares < shares) {
+    // 1. Get all lots of that symbol (FIFO order)
+    const [rows] = await db.execute(
+      'SELECT * FROM userhave WHERE symbol = ? ORDER BY buy_date ASC',
+      [upperSymbol]
+    );
+
+    const totalHeld = rows.reduce((sum, row) => sum + row.shares, 0);
+    if (totalHeld < sharesToSell) {
       return res.status(400).json({ error: 'Not enough holdings to sell' });
     }
 
@@ -367,23 +374,40 @@ app.post('/api/portfolio/sell', async (req, res) => {
       return res.status(500).json({ error: 'Failed to fetch current price' });
     }
 
-    const totalProceeds = price * shares;
-    const remainingShares = rows[0].shares - shares;
+    let totalProceeds = 0;
 
-    if (remainingShares === 0) {
-      await db.execute('DELETE FROM userhave WHERE symbol = ?', [upperSymbol]);
-    } else {
-      await db.execute('UPDATE userhave SET shares = ? WHERE symbol = ?', [remainingShares, upperSymbol]);
+    for (const row of rows) {
+      if (sharesToSell === 0) break;
+
+      const sellAmount = Math.min(sharesToSell, row.shares);
+
+      if (sellAmount === row.shares) {
+        // Delete this row completely
+        await db.execute('DELETE FROM userhave WHERE id = ?', [row.id]);
+      } else {
+        // Partially reduce shares
+        await db.execute(
+          'UPDATE userhave SET shares = shares - ? WHERE id = ?',
+          [sellAmount, row.id]
+        );
+      }
+
+      // Log the sale in transactions
+      await db.execute(
+        `INSERT INTO portfolio_transactions (symbol, shares, price, type, transaction_date)
+         VALUES (?, ?, ?, 'SELL', ?)`,
+        [upperSymbol, sellAmount, price, today]
+      );
+
+      totalProceeds += sellAmount * price;
+      sharesToSell -= sellAmount;
     }
 
+    // 3. Update cash balance
     await db.execute(
-      `INSERT INTO portfolio_transactions (symbol, shares, price, type, transaction_date)
-       VALUES (?, ?, ?, 'SELL', ?)`,
-      [upperSymbol, shares, price, today]
+      'UPDATE cash_balance SET amount = amount + ? WHERE id = 1',
+      [totalProceeds]
     );
-
-    // ✅ Removed "const" — just reuse the value
-    await db.execute(`UPDATE cash_balance SET amount = amount + ? WHERE id = 1`, [totalProceeds]);
 
     res.json({
       message: '✅ Sell successful',
@@ -398,6 +422,7 @@ app.post('/api/portfolio/sell', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
 
 //get cash
 app.get('/api/cashbalance', async (req, res) => {
@@ -473,6 +498,49 @@ app.patch('/api/cashbalance/extract', async (req, res) => {
   }
 });
 
+//profit
+app.get('/api/portfolio/summary', async (req, res) => {
+  try {
+    const [userHoldings] = await db.execute(`
+      SELECT symbol, shares, buy_price FROM userhave
+    `);
+
+    if (userHoldings.length === 0) {
+      return res.json({ total_invested: 0, current_value: 0, gain: 0 });
+    }
+
+    let totalInvested = 0;
+    let currentValue = 0;
+
+    for (const row of userHoldings) {
+      const { symbol, shares, buy_price } = row;
+
+      const quote = await yahooFinance.quote(symbol);
+      const price = parseFloat(quote?.regularMarketPrice ?? 0);
+
+      if (!price || !shares) continue;
+
+      totalInvested += shares * buy_price;
+      currentValue += shares * price;
+
+      console.log(`✅ ${symbol}: Bought ${shares} @ ${buy_price}, now @ ${price}`);
+    }
+
+    const gain = currentValue - totalInvested;
+
+    res.json({
+      total_invested: +totalInvested.toFixed(2),
+      current_value: +currentValue.toFixed(2),
+      gain: +gain.toFixed(2)
+    });
+
+  } catch (err) {
+    console.error('Error in summary API:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
 
 //stock portfolio
 app.get('/api/portfolio', async (req, res) => {
@@ -526,7 +594,7 @@ app.get('/api/portfolio', async (req, res) => {
 app.get('/api/portfolio/transactions', async (req, res) => {
   try {
     const [rows] = await db.execute(`
-      SELECT symbol, shares, price, type, transaction_date
+      SELECT symbol, shares, price, type, date_format(transaction_date,"%Y-%m-%d") as transaction_date
       FROM portfolio_transactions
       ORDER BY transaction_date DESC
     `);
@@ -534,6 +602,84 @@ app.get('/api/portfolio/transactions', async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error('Error fetching transaction history:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// portfolio beta
+app.get('/api/portfolio/beta', async (req, res) => {
+
+  function covariance(x, y) {
+    const meanX = x.reduce((a, b) => a + b, 0) / x.length;
+    const meanY = y.reduce((a, b) => a + b, 0) / y.length;
+    return x.reduce((sum, xi, i) => sum + (xi - meanX) * (y[i] - meanY), 0) / x.length;
+  }
+
+  function variance(arr) {
+    const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+    return arr.reduce((sum, val) => sum + (val - mean) ** 2, 0) / arr.length;
+  }
+
+  try {
+    const [rows] = await db.execute('SELECT symbol, shares FROM userhave');
+    if (!rows.length) return res.json({ beta: 0, details: [] });
+
+    const symbols = rows.map(r => r.symbol.toUpperCase());
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - 90);
+
+    // 获取市场（S&P 500）数据
+    const marketData = await yahooFinance.historical('^GSPC', {
+      period1: start,
+      period2: end,
+      interval: '1d'
+    });
+    const marketClose = marketData.map(d => d.close);
+    const marketReturns = marketClose.slice(1).map((v, i) => (v - marketClose[i]) / marketClose[i]);
+
+    let totalValue = 0;
+    const stockResults = [];
+
+    for (const { symbol, shares } of rows) {
+      const history = await yahooFinance.historical(symbol, {
+        period1: start,
+        period2: end,
+        interval: '1d'
+      });
+
+      const close = history.map(d => d.close);
+      const returns = close.slice(1).map((v, i) => (v - close[i]) / close[i]);
+
+      if (returns.length !== marketReturns.length) continue;
+
+      const beta = covariance(returns, marketReturns) / variance(marketReturns);
+      const currentPrice = close[close.length - 1];
+      const value = currentPrice * shares;
+
+      stockResults.push({
+        symbol,
+        beta: +beta.toFixed(3),
+        weight: value
+      });
+
+      totalValue += value;
+    }
+
+    const results = stockResults.map(s => ({
+      ...s,
+      weight: +(s.weight / totalValue).toFixed(3)
+    }));
+
+    const portfolioBeta = results.reduce((sum, s) => sum + s.beta * s.weight, 0);
+
+    res.json({
+      beta: +portfolioBeta.toFixed(3),
+      details: results
+    });
+
+  } catch (err) {
+    console.error('Error in /api/portfolio/beta:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

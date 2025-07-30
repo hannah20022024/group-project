@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Portfolio Manager</title>
+  <style>
+    body {
+      font-family: Arial;
+      margin: 0;
+      background-color: #f2f2f2;
+    }
+
+    header {
+      background-color: #333;
+      color: #fff;
+      padding: 1rem;
+      text-align: center;
+      font-size: 3rem;
+    }
+
+    nav {
+      background-color: #444;
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      padding: 0.8rem;
+    }
+
+    nav button {
+      padding: 0.6rem 1.2rem;
+      border: none;
+      border-radius: 0.4rem;
+      background-color: #666;
+      color: white;
+      cursor: pointer;
+    }
+
+    nav button:hover {
+      background-color: #888;
+    }
+
+    iframe {
+      width: 100%;
+      height: 85vh;
+      border: none;
+      background-color: white;
+    }
+  </style>
+</head>
+<body>
+
+  <header>Portfolio Manager</header>
+
+  <nav>
+    <button onclick="loadPage('cash_account.html')">Account</button>
+    <button onclick="loadPage('watchlist.html')">Watchlist</button>
+    <button onclick="loadPage('portfolio.html')">Portfolio</button>
+    <button onclick="loadPage('watchlist-strategy.html')">SMA Strategy</button>
+    <button onclick="loadPage('dca.html')">DCA Strategy</button>
+    <button onclick="loadPage('beta1.html')">Portfolio Beta Analysis</button>
+    <button onclick="loadPage('purchase.html')">Buy Stock</button>
+    <button onclick="loadPage('sell.html')">Sell Stock</button>
+    <button onclick="loadPage('history.html')">Transaction History</button>
+  </nav>
+
+  <iframe id="contentFrame" src="watchlist.html"></iframe>
+
+  <script>
+    function loadPage(page) {
+      document.getElementById('contentFrame').src = page;
+    }
+  </script>
+
+</body>
+</html>

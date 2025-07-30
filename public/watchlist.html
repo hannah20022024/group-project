@@ -11,7 +11,7 @@
       padding: 20px;
     }
     h1, h2 {
-      color: #4daaf2;
+      color: #eee;
     }
     table {
       width: 100%;
@@ -30,7 +30,7 @@
       background: #222;
     }
     .green { color: lightgreen; }
-    .red { color: salmon; }
+    .red { color: red; }
     a {
       color: #4daaf2;
       text-decoration: none;
@@ -43,11 +43,13 @@
       border-radius: 4px;
       border: none;
       width: 200px;
+      background-color: #222;
+      color:#fff;
     }
     button {
       padding: 8px 12px;
       margin-left: 10px;
-      background: #4daaf2;
+      background: #4caf50;
       border: none;
       border-radius: 4px;
       color: white;
@@ -63,7 +65,7 @@
   </style>
 </head>
 <body>
-  <h1>📈 My Watchlist</h1>
+  <h1></h1>My Watchlist</h1>
 
   <h2>Add Stock</h2>
   <input type="text" id="symbolInput" placeholder="Enter symbol (e.g., AAPL)" />
@@ -86,7 +88,7 @@
   </table>
 
   <script>
-    const apiUrl = 'http://localhost:3000/api/watchlist';
+    const apiUrl = 'http://localhost:3010/api/watchlist';
 
     function loadWatchlist() {
       fetch(apiUrl)

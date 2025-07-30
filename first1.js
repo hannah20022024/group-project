@@ -7,12 +7,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 const PORT = 3010;
+app.use(express.static('public'));
 
+let db; // 定义全局 db
+let watchlist = []; // 初始化空的 watchlist
 
-let db; 
-let watchlist = []; 
-
-
+// 🔹 封装获取最新的 watchlist（从数据库拉取）
 const loadWatchlist = async () => {
   const [rows] = await db.execute("SELECT symbol FROM stock_pool");
   watchlist = rows.map(row => row.symbol.toUpperCase());
@@ -20,31 +20,32 @@ const loadWatchlist = async () => {
 
 const startServer = async () => {
   try {
-
+    // 建立数据库连接
     db = await mysql.createConnection({
       host: 'localhost',
-      user: 'root',        
-      password: 'n3u3da!', 
+      user: 'root',        // 替换为你的用户名
+      password: 'n3u3da!', // 替换为你的密码
       database: 'currency_db'
     });
 
-    console.log('Connect to DB sucessfully!!!');
+    console.log('✅ 已连接数据库');
 
-   
+    // 加载初始 watchlist
     await loadWatchlist();
 
+    // 🟢 启动服务器
     app.listen(PORT, () => {
-      console.log(`Server running at http://localhost:${PORT}`);
+      console.log(`✅ Server running at http://localhost:${PORT}`);
     });
   } catch (err) {
-    console.error('Cannot start server:', err);
+    console.error('❌ 无法启动服务器:', err);
   }
 };
 
-
+// 🔹 获取 watchlist 中所有股票的当前行情
 app.get('/api/watchlist', async (req, res) => {
   try {
-    await loadWatchlist(); 
+    await loadWatchlist(); // 每次请求都刷新 watchlist
     const results = await Promise.all(
       watchlist.map(async (symbol) => {
         const quote = await yahooFinance.quote(symbol);
@@ -66,24 +67,24 @@ app.get('/api/watchlist', async (req, res) => {
   }
 });
 
-
+// 🔹 添加 symbol 到 watchlist
 app.post('/api/watchlist', async (req, res) => {
   const { symbol } = req.body;
 
   if (!symbol || typeof symbol !== 'string') {
-    return res.status(400).json({ error: 'Missing symbol or lack of symbol..' });
+    return res.status(400).json({ error: '缺少或无效的 symbol' });
   }
 
   try {
     await db.execute('INSERT INTO stock_pool (symbol) VALUES (?)', [symbol.toUpperCase()]);
     await loadWatchlist();
-    res.json({ message: 'Add successfully', symbol: symbol.toUpperCase() });
+    res.json({ message: '添加成功', symbol: symbol.toUpperCase() });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
-      res.status(409).json({ error: 'Already in this watchlist' });
+      res.status(409).json({ error: '该股票已在 watchlist 中' });
     } else {
-      console.error('Cannot insert:', err);
-      res.status(500).json({ error: 'Fail to add the watchlist' });
+      console.error('❌ 插入失败:', err);
+      res.status(500).json({ error: '添加失败' });
     }
   }
 });
@@ -141,12 +142,12 @@ app.get('/api/strategy/:symbol', async (req, res) => {
       sma14
     });
   } catch (err) {
-    console.error("Strategy cannnot analyse:", err);
-    res.status(500).json({ error: 'cannot get strategy data' });
+    console.error("策略分析失败:", err);
+    res.status(500).json({ error: '无法获取策略数据' });
   }
 });
 
-
+// 🧠 DCA 模拟策略
 
 app.get('/api/simulate-dca/:symbol', async (req, res) => {
   const symbol = req.params.symbol?.toUpperCase();
@@ -255,36 +256,38 @@ app.post('/api/simulate-dca', async (req, res) => {
       percent
     });
   } catch (err) {
-    console.error("DCA POST route failed:", err);
+    console.error("❌ DCA POST route failed:", err);
     res.status(500).json({ error: "Internal error in DCA simulation" });
   }
 });
 
 
 
+// 🔹 删除 symbol
 app.delete('/api/watchlist/:symbol', async (req, res) => {
   const symbol = req.params.symbol?.toUpperCase();
 
   if (!symbol) {
-    return res.status(400).json({ error: 'Invaild symbol' });
+    return res.status(400).json({ error: '无效的 symbol 参数' });
   }
 
   try {
     const [result] = await db.execute('DELETE FROM stock_pool WHERE symbol = ?', [symbol]);
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Cannot find this symbol' });
+      return res.status(404).json({ error: '未找到该 symbol' });
     }
 
     await loadWatchlist();
-    res.json({ message: 'Delete successfully', symbol });
+    res.json({ message: '删除成功', symbol });
   } catch (err) {
-    console.error('Fail to delete:', err);
-    res.status(500).json({ error: 'Fail to delete' });
+    console.error('❌ 删除失败:', err);
+    res.status(500).json({ error: '删除失败' });
   }
 });
 
-//  Buy API
+// buy
+// 🔹 Buy API
 app.post('/api/portfolio/buy', async (req, res) => {
   const { symbol, shares } = req.body;
 
@@ -313,21 +316,9 @@ app.post('/api/portfolio/buy', async (req, res) => {
 
     // 3. Insert into userhave
     await db.execute(
-      `INSERT INTO userhave (symbol, shares, buy_price, buy_date)
-       VALUES (?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE
-         shares = shares + VALUES(shares)`,
+      'INSERT INTO userhave (symbol, shares, buy_price, buy_date) VALUES (?, ?, ?, ?)',
       [symbol.toUpperCase(), shares, price, today]
     );
-    
-    await db.execute(
-      `INSERT INTO portfolio_transactions (symbol, shares, price, type, transaction_date)
-       VALUES (?, ?, ?, 'buy', ?)`,
-      [symbol.toUpperCase(), shares, price, today]
-    );
-
-    const cost = price * shares;
-    await db.execute(`UPDATE cash_balance SET amount = amount - ? WHERE id = 1`, [cost]);
 
     res.json({
       message: '✅ Purchase successful',
@@ -344,203 +335,7 @@ app.post('/api/portfolio/buy', async (req, res) => {
 });
 
 
-//sell
-app.post('/api/portfolio/sell', async (req, res) => {
-  const { symbol, shares } = req.body;
-
-  if (!symbol || !shares || shares <= 0) {
-    return res.status(400).json({ error: 'Invalid input' });
-  }
-
-  const upperSymbol = symbol.toUpperCase();
-  const today = new Date().toISOString().split('T')[0];
-
-  try {
-    const [rows] = await db.execute('SELECT * FROM userhave WHERE symbol = ?', [upperSymbol]);
-    if (rows.length === 0 || rows[0].shares < shares) {
-      return res.status(400).json({ error: 'Not enough holdings to sell' });
-    }
-
-    const quote = await yahooFinance.quote(upperSymbol);
-    const price = quote?.regularMarketPrice;
-    if (!price) {
-      return res.status(500).json({ error: 'Failed to fetch current price' });
-    }
-
-    const totalProceeds = price * shares;
-    const remainingShares = rows[0].shares - shares;
-
-    if (remainingShares === 0) {
-      await db.execute('DELETE FROM userhave WHERE symbol = ?', [upperSymbol]);
-    } else {
-      await db.execute('UPDATE userhave SET shares = ? WHERE symbol = ?', [remainingShares, upperSymbol]);
-    }
-
-    await db.execute(
-      `INSERT INTO portfolio_transactions (symbol, shares, price, type, transaction_date)
-       VALUES (?, ?, ?, 'SELL', ?)`,
-      [upperSymbol, shares, price, today]
-    );
-
-    // ✅ Removed "const" — just reuse the value
-    await db.execute(`UPDATE cash_balance SET amount = amount + ? WHERE id = 1`, [totalProceeds]);
-
-    res.json({
-      message: '✅ Sell successful',
-      symbol: upperSymbol,
-      sharesSold: shares,
-      sellPrice: price,
-      totalProceeds: +totalProceeds.toFixed(2)
-    });
-
-  } catch (error) {
-    console.error("Sell error:", error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-//get cash
-app.get('/api/cashbalance', async (req, res) => {
-  try {
-    const [rows] = await db.execute('SELECT amount FROM cash_balance WHERE id = 1');
-    
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'Cash balance not found' });
-    }
-
-    res.json({ cashBalance: rows[0].amount });
-  } catch (err) {
-    console.error('Error fetching cash balance:', err);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-//add cash
-app.patch('/api/cashbalance/add', async (req, res) => {
-  const { cash } = req.body;
-
-  if (typeof cash !== 'number' || cash <= 0) {
-    return res.status(400).json({ error: 'Invalid cash amount' });
-  }
-
-  try {
-    // Add the cash to the balance
-    const [result] = await db.execute(
-      'UPDATE cash_balance SET amount = amount + ? WHERE id = 1',
-      [cash]
-    );
-
-    res.json({ message: '✅ Cash added successfully', added: cash });
-  } catch (err) {
-    console.error('Error adding cash:', err);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-//extract cash
-app.patch('/api/cashbalance/extract', async (req, res) => {
-  const { cash } = req.body;
-
-  if (!cash || typeof cash !== 'number' || cash <= 0) {
-    return res.status(400).json({ error: 'Invalid cash amount' });
-  }
-
-  try {
-    // Get current balance
-    const [rows] = await db.execute('SELECT amount FROM cash_balance WHERE id = 1');
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'Cash balance not found' });
-    }
-
-    const currentBalance = rows[0].amount;
-
-    if (cash > currentBalance) {
-      return res.status(400).json({ error: 'Insufficient balance to extract' });
-    }
-
-    // Subtract the amount
-    await db.execute('UPDATE cash_balance SET amount = amount - ? WHERE id = 1', [cash]);
-
-    res.json({
-      message: '✅ Cash extracted to credit card successfully',
-      extracted: cash,
-      remainingBalance: currentBalance - cash
-    });
-
-  } catch (err) {
-    console.error('Error extracting cash:', err);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-
-//stock portfolio
-app.get('/api/portfolio', async (req, res) => {
-  try {
-    const [rows] = await db.execute(`
-      SELECT 
-        symbol,
-        SUM(shares) AS total_shares,
-        ROUND(SUM(shares * buy_price) / SUM(shares), 2) AS average_price
-      FROM userhave
-      GROUP BY symbol
-    `);
-
-    if (rows.length === 0) return res.json([]);
-
-    const quotes = await yahooFinance.quote(rows.map(r => r.symbol));
-    const quoteMap = Array.isArray(quotes)
-      ? Object.fromEntries(quotes.map(q => [q.symbol, q]))
-      : { [quotes.symbol]: quotes };
-
-    const result = rows.map(row => {
-      const quote = quoteMap[row.symbol];
-      const shares = parseFloat(row.total_shares);
-      const avgPrice = parseFloat(row.average_price);
-      const price = parseFloat(quote?.regularMarketPrice ?? 0);
-      const totalValue = shares * price;
-      const cost = shares * avgPrice;
-      const gain = totalValue - cost;
-
-      return {
-        symbol: row.symbol,
-        shares,
-        averagePrice: +avgPrice.toFixed(2),
-        currentPrice: +price.toFixed(2),
-        totalValue: +totalValue.toFixed(2),
-        gain: +gain.toFixed(2),
-        gainPercent: +(cost === 0 ? 0 : (gain / cost * 100).toFixed(2)),
-        currency: quote.currency,
-        marketTime: quote.regularMarketTime
-      };
-    });
-
-    res.json(result);
-  } catch (err) {
-    console.error("❌ Portfolio API Error:", err);
-    res.status(500).json({ error: '获取投资组合失败' });
-  }
-});
-
-//get transactions
-app.get('/api/portfolio/transactions', async (req, res) => {
-  try {
-    const [rows] = await db.execute(`
-      SELECT symbol, shares, price, type, transaction_date
-      FROM portfolio_transactions
-      ORDER BY transaction_date DESC
-    `);
-
-    res.json(rows);
-  } catch (error) {
-    console.error('Error fetching transaction history:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-
-app.use(express.static('public'));
-
+// 启动服务器
 startServer();
 
 

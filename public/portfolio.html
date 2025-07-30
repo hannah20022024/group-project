@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>My Portfolio</title>
+  <style>
+    body {
+      background-color: #121212;
+      color: #ffffff;
+      font-family: Arial, sans-serif;
+      padding: 30px;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background-color: #1e1e1e;
+    }
+
+    th, td {
+      padding: 12px 15px;
+      border: 1px solid #333;
+      text-align: center;
+    }
+
+    th {
+      background-color: rgba(0, 204, 255, 0.15);
+      color: white;
+    }
+
+    tr:hover {
+      background-color: #2a2a2a;
+    }
+
+    .gain-positive {
+      color: #00ff99;
+    }
+
+    .gain-negative {
+      color: #ff5050;
+    }
+
+    .btn-refresh {
+      background-color: #00cc88;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin-bottom: 20px;
+      cursor: pointer;
+      border-radius: 5px;
+      font-weight: bold;
+      transition: background-color 0.3s, transform 0.2s;
+    }
+
+    .btn-refresh:hover {
+      background-color: #00e6a3;
+      transform: scale(1.05);
+    }
+
+    #message {
+      text-align: center;
+      margin-top: 15px;
+    }
+
+    .chart-container {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 40px;
+      margin-top: 40px;
+      flex-wrap: nowrap;
+    }
+
+    .chart-box {
+      background-color: #1e1e1e;
+      padding: 15px;
+      border-radius: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .chart-box.pie {
+      width: 400px;
+      height: 400px;
+    }
+
+    .chart-box.bar {
+      width: 600px;
+      height: 350px;
+    }
+
+    canvas {
+      width: 100% !important;
+      height: 100% !important;
+    }
+  </style>
+</head>
+<body>
+  <h1>My Portfolio</h1>
+  <div style="text-align: center;">
+    <button class="btn-refresh" onclick="loadPortfolio()">🔄 Refresh</button>
+  </div>
+
+  <table id="portfolio-table">
+    <thead>
+      <tr>
+        <th>Symbol</th>
+        <th>Shares</th>
+        <th>Avg Price</th>
+        <th>Current Price</th>
+        <th>Total Value</th>
+        <th>Gain</th>
+        <th>Gain %</th>
+        <th>Currency</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div id="message"></div>
+
+  <div class="chart-container">
+    <div class="chart-box pie">
+      <canvas id="pieChart"></canvas>
+    </div>
+    <div class="chart-box bar">
+      <canvas id="barChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart.js and Data Labels Plugin -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+
+  <script>
+    let pieChartInstance, barChartInstance;
+
+    async function loadPortfolio() {
+      try {
+        const res = await fetch('http://localhost:3010/api/portfolio');
+        const data = await res.json();
+
+        const tbody = document.querySelector('#portfolio-table tbody');
+        tbody.innerHTML = '';
+
+        if (data.length === 0) {
+          document.getElementById('message').textContent = 'No portfolio data available.';
+          return;
+        } else {
+          document.getElementById('message').textContent = '';
+        }
+
+        const labels = [];
+        const values = [];
+
+        data.forEach(stock => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${stock.symbol}</td>
+            <td>${stock.shares}</td>
+            <td>${stock.averagePrice}</td>
+            <td>${stock.currentPrice}</td>
+            <td>${stock.totalValue}</td>
+            <td class="${stock.gain >= 0 ? 'gain-positive' : 'gain-negative'}">${stock.gain}</td>
+            <td class="${stock.gain >= 0 ? 'gain-positive' : 'gain-negative'}">${stock.gainPercent}%</td>
+            <td>${stock.currency}</td>
+          `;
+          tbody.appendChild(tr);
+
+          labels.push(stock.symbol);
+          values.push(stock.totalValue);
+        });
+
+        renderCharts(labels, values);
+      } catch (err) {
+        console.error('Failed to load portfolio:', err);
+        document.getElementById('message').textContent = '❌ Error loading portfolio.';
+      }
+    }
+
+    function renderCharts(labels, data) {
+      const pieCtx = document.getElementById('pieChart').getContext('2d');
+      const barCtx = document.getElementById('barChart').getContext('2d');
+
+      if (pieChartInstance) pieChartInstance.destroy();
+      if (barChartInstance) barChartInstance.destroy();
+
+      pieChartInstance = new Chart(pieCtx, {
+        type: 'pie',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data,
+            backgroundColor: ['#4caf50', '#2196f3', '#ff9800', '#e91e63', '#9c27b0', '#00bcd4', '#ffc107']
+          }]
+        },
+        options: {
+          plugins: {
+            legend: { labels: { color: 'white' } },
+            datalabels: {
+              color: 'white',
+              formatter: value => `$${value.toFixed(0)}`
+            }
+          }
+        },
+        plugins: [ChartDataLabels]
+      });
+
+      barChartInstance = new Chart(barCtx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Value by Stock',
+            data: data,
+            backgroundColor: '#00cc88',
+            barPercentage: 0.6,
+            categoryPercentage: 0.6
+          }]
+        },
+        options: {
+          layout: {
+            padding: { bottom: 20 }
+          },
+          scales: {
+            x: {
+              ticks: { color: 'white', maxRotation: 45, minRotation: 45 }
+            },
+            y: {
+              ticks: { color: 'white' }
+            }
+          },
+          plugins: {
+            legend: {
+              labels: { color: 'white' }
+            },
+            datalabels: {
+              anchor: 'end',
+              align: 'top',
+              color: 'white',
+              formatter: value => `$${value.toFixed(0)}`
+            }
+          }
+        },
+        plugins: [ChartDataLabels]
+      });
+    }
+
+    window.onload = loadPortfolio;
+  </script>
+</body>
+</html>

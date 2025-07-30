@@ -503,21 +503,45 @@ app.patch('/api/cashbalance/extract', async (req, res) => {
 //profit
 app.get('/api/portfolio/summary', async (req, res) => {
   try {
-    const [result] = await db.execute(`
-      SELECT
-        SUM(u.shares * u.buy_price) AS total_invested,
-        SUM(u.shares * s.current_price) AS current_value,
-        SUM(u.shares * (s.current_price - u.buy_price)) AS gain
-      FROM userhave u
-      JOIN stock_pool s ON u.symbol = s.symbol
+    const [userHoldings] = await db.execute(`
+      SELECT symbol, shares, buy_price FROM userhave
     `);
 
-    res.json(result[0]);
+    if (userHoldings.length === 0) {
+      return res.json({ total_invested: 0, current_value: 0, gain: 0 });
+    }
+
+    let totalInvested = 0;
+    let currentValue = 0;
+
+    for (const row of userHoldings) {
+      const { symbol, shares, buy_price } = row;
+
+      const quote = await yahooFinance.quote(symbol);
+      const price = parseFloat(quote?.regularMarketPrice ?? 0);
+
+      if (!price || !shares) continue;
+
+      totalInvested += shares * buy_price;
+      currentValue += shares * price;
+
+      console.log(`✅ ${symbol}: Bought ${shares} @ ${buy_price}, now @ ${price}`);
+    }
+
+    const gain = currentValue - totalInvested;
+
+    res.json({
+      total_invested: +totalInvested.toFixed(2),
+      current_value: +currentValue.toFixed(2),
+      gain: +gain.toFixed(2)
+    });
+
   } catch (err) {
     console.error('Error in summary API:', err);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
 
 
 //stock portfolio
