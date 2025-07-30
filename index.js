@@ -3,6 +3,10 @@ const cors = require("cors");
 const stockRoutes = require("./routes/stockRoutes");
 require("dotenv").config();
 
+// import fec from './backend/fetchtest.js'
+import apis from './backend/tradingApi.js'
+import transation from './backend/transactionRecord.js';
+import cors from 'cors'
 const app = express();
 
 app.use(cors());
