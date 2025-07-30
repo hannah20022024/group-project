@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Transaction History</title>
+  <style>
+    body {
+      background-color: #121212;
+      color: #ffffff;
+      font-family: Arial, sans-serif;
+      padding: 30px;
+    }
+
+    h1 {
+      text-align: center;
+      color: white;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background-color: #1e1e1e;
+    }
+
+    th, td {
+      padding: 12px 15px;
+      border: 1px solid #333;
+      text-align: center;
+    }
+
+    th {
+      background-color: rgba(0, 204, 255, 0.15);
+      color: white;
+    }
+
+    tr:hover {
+      background-color: #2a2a2a;
+    }
+
+    .buy {
+      color: #00ff99;
+    }
+
+    .sell {
+      color: #ff5050;
+    }
+
+    #message {
+      text-align: center;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Transaction History</h1>
+  <table id="history-table">
+    <thead>
+      <tr>
+        <th>Symbol</th>
+        <th>Shares</th>
+        <th>Price</th>
+        <th>Type</th>
+        <th>Transaction Date</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div id="message"></div>
+
+  <script>
+    async function loadTransactionHistory() {
+      try {
+        const res = await fetch('http://localhost:3010/api/portfolio/transactions');
+        const data = await res.json();
+
+        const tbody = document.querySelector('#history-table tbody');
+        tbody.innerHTML = '';
+
+        if (data.length === 0) {
+          document.getElementById('message').textContent = 'No transaction history found.';
+          return;
+        }
+
+        data.forEach(tx => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${tx.symbol}</td>
+            <td>${tx.shares}</td>
+            <td>$${parseFloat(tx.price).toFixed(2)}</td>
+            <td class="${tx.type === 'buy' ? 'buy' : 'sell'}">${tx.type.toUpperCase()}</td>
+            <td>${tx.transaction_date}</td>
+          `;
+          tbody.appendChild(row);
+        });
+      } catch (error) {
+        console.error('❌ Failed to load transaction history:', error);
+        document.getElementById('message').textContent = '❌ Error loading data.';
+      }
+    }
+
+    window.onload = loadTransactionHistory;
+  </script>
+</body>
+</html>
