@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>DCA Simulation Tool</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      background-color: #121212;
+      color: white;
+    }
+
+    input, button {
+      padding: 0.6rem;
+      margin-right: 1rem;
+      margin-bottom: 1rem;
+      border-radius: 5px;
+      border: 1px solid #555;
+      background-color: #1e1e1e;
+      color: white;
+    }
+
+    button {
+      background-color: #4caf50;
+      color: white;
+      cursor: pointer;
+    }
+
+    #result {
+      margin-top: 2rem;
+      background-color: #1e1e1e;
+      color: white;
+      padding: 1rem;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(255,255,255,0.1);
+    }
+
+    .gain {
+      color: #00e676;
+      font-weight: bold;
+    }
+
+    .loss {
+      color: #ff5252;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <label>Stock Symbol:</label>
+  <input type="text" id="symbol" placeholder="e.g. AAPL" />
+
+  <label>Weekly Investment Amount ($):</label>
+  <input type="number" id="amount" value="100" />
+
+  <label>Number of Weeks:</label>
+  <input type="number" id="weeks" value="10" />
+
+  <button onclick="simulateDCA()">Simulate</button>
+
+  <div id="result"></div>
+
+  <script>
+    async function simulateDCA() {
+      const symbol = document.getElementById('symbol').value.toUpperCase();
+      const amount = parseFloat(document.getElementById('amount').value);
+      const weeks = parseInt(document.getElementById('weeks').value);
+
+      if (!symbol || isNaN(amount) || isNaN(weeks)) {
+        alert('Please fill in all fields');
+        return;
+      }
+
+      const response = await fetch('/api/simulate-dca', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbol, amount, weeks })
+      });
+
+      const data = await response.json();
+      if (data.error) {
+        document.getElementById('result').innerHTML = `<p style="color:red;">❌ ${data.error}</p>`;
+        return;
+      }
+
+      const r = data;
+      const profitClass = r.profit >= 0 ? 'gain' : 'loss';
+
+      document.getElementById('result').innerHTML = `
+        <h3>✅ Simulation Result (${symbol})</h3>
+        <p>📆 Weeks: ${weeks}</p>
+        <p>💵 Total Invested: $${r.totalInvested.toFixed(2)}</p>
+        <p>📈 Total Shares Bought: ${r.totalShares.toFixed(4)} shares</p>
+        <p>🏁 Current Value: $${r.finalValue.toFixed(2)}</p>
+        <p class="${profitClass}">🎯 Profit/Loss: $${r.profit.toFixed(2)} (${r.percent.toFixed(2)}%)</p>
+      `;
+    }
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Account Overview</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background-color: #121212;
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 0;
+      color: #ffffff;
+    }
+
+    h2, h3 {
+      margin: 0.5rem 0 1rem;
+      color: #ffffff;
+    }
+
+    .main-wrapper {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    .flex-container {
+      display: flex;
+      justify-content: space-between;
+      gap: 2rem;
+      flex-wrap: wrap;
+      margin-top: 2rem;
+    }
+
+    .card, .form-box {
+      background: #1e1e1e;
+      padding: 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+      transition: 0.3s ease;
+    }
+
+    .card:hover, .form-box:hover {
+      box-shadow: 0 0 18px rgba(0,0,0,0.6);
+      transform: translateY(-4px);
+    }
+
+    .card {
+      flex: 1 1 350px;
+      text-align: center;
+    }
+
+    .form-box {
+      flex: 1 1 300px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    input {
+      width: 100%;
+      padding: 0.6rem;
+      margin: 0.6rem 0;
+      border-radius: 6px;
+      border: none;
+      background: #2a2a2a;
+      color: white;
+      font-size: 1rem;
+    }
+
+    button {
+      width: 100%;
+      padding: 0.7rem;
+      font-size: 1rem;
+      margin-top: 0.5rem;
+      border-radius: 6px;
+      border: none;
+      background-color: #00cc88;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.3s, transform 0.2s;
+    }
+
+    button:hover {
+      background-color: #00e6a3;
+      transform: scale(1.03);
+    }
+
+    canvas {
+      margin-top: 1rem;
+      background: #181818;
+      border-radius: 10px;
+      padding: 1rem;
+    }
+
+    .status {
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      color: #ccc;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      flex-wrap: wrap;
+      margin-top: 2rem;
+    }
+
+    .summary-row .card {
+      flex: 1 1 200px;
+      font-size: 1.4rem;
+    }
+
+    .gain-positive { color: #00e676; }
+    .gain-negative { color: #ff5252; }
+  </style>
+</head>
+<body>
+
+  <div class="main-wrapper">
+
+    <div class="summary-row">
+      <div class="card" id="profit-card">
+        <h3>Profit / Loss</h3>
+        <p id="profit-value">Loading...</p>
+      </div>
+      <div class="card" id="gain-card">
+        <h3>Gain (%)</h3>
+        <p id="gain-value">Loading...</p>
+      </div>
+    </div>
+
+    <div class="flex-container">
+      <div class="card">
+        <h2 id="amount">$0.00</h2>
+        <canvas id="balanceChart" width="300" height="300"></canvas>
+      </div>
+
+      <div class="form-box">
+        <h3>Add Cash</h3>
+        <input type="number" id="addAmount" placeholder="Enter amount to add">
+        <button onclick="addCash()">Add</button>
+        <div id="addStatus" class="status"></div>
+
+        <h3 style="margin-top:2rem;">Extract Cash</h3>
+        <input type="number" id="extractAmount" placeholder="Enter amount to extract">
+        <button onclick="extractCash()">Extract</button>
+        <div id="extractStatus" class="status"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let chart;
+
+    function renderChart(balance, spent) {
+      const ctx = document.getElementById('balanceChart').getContext('2d');
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Cash Available', 'Invested'],
+          datasets: [{
+            data: [balance, spent],
+            backgroundColor: ['#00cc88', '#444']
+          }]
+        },
+        options: {
+          plugins: {
+            legend: { labels: { color: 'white' } }
+          }
+        }
+      });
+    }
+
+    async function loadBalance() {
+      try {
+        const res = await fetch('/api/cashbalance');
+        const data = await res.json();
+        const balance = parseFloat(data.cashBalance || 0);
+        const spent = 50000;
+        document.getElementById('amount').textContent = `$${balance.toFixed(2)}`;
+        renderChart(balance, spent);
+      } catch (err) {
+        console.error("Error loading balance:", err);
+        document.getElementById('amount').textContent = "❌ Error";
+      }
+    }
+
+    async function addCash() {
+      const cash = parseFloat(document.getElementById('addAmount').value);
+      if (isNaN(cash) || cash <= 0) return;
+      const res = await fetch('/api/cashbalance/add', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cash })
+      });
+      const data = await res.json();
+      document.getElementById('addStatus').textContent = data.message || 'Success';
+      loadBalance();
+    }
+
+    async function extractCash() {
+      const cash = parseFloat(document.getElementById('extractAmount').value);
+      if (isNaN(cash) || cash <= 0) return;
+      const res = await fetch('/api/cashbalance/extract', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cash })
+      });
+      const data = await res.json();
+      document.getElementById('extractStatus').textContent = data.message || 'Success';
+      loadBalance();
+    }
+
+    async function loadPortfolioSummary() {
+      try {
+        const res = await fetch('/api/portfolio/summary');
+        const data = await res.json();
+
+        const invested = parseFloat(data.total_invested || 0);
+        const gain = parseFloat(data.gain || 0);
+        const gainPercent = invested > 0 ? (gain / invested * 100).toFixed(2) : '0.00';
+
+        const profitEl = document.getElementById('profit-value');
+        profitEl.textContent = `$${gain.toFixed(2)}`;
+        profitEl.className = gain >= 0 ? 'gain-positive' : 'gain-negative';
+
+        const gainEl = document.getElementById('gain-value');
+        gainEl.textContent = `${gain >= 0 ? '+' : ''}${gainPercent}%`;
+        gainEl.className = gain >= 0 ? 'gain-positive' : 'gain-negative';
+
+      } catch (err) {
+        console.error("Failed to load portfolio summary:", err);
+        document.getElementById('profit-value').textContent = 'Error';
+        document.getElementById('gain-value').textContent = 'Error';
+      }
+    }
+
+    loadBalance();
+    loadPortfolioSummary();
+  </script>
+</body>
+</html>
+

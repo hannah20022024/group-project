@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Strategy Analysis</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background-color: #111;
+      color: #eee;
+      font-family: sans-serif;
+      padding: 20px;
+    }
+
+    /* Input and Button Styling */
+    #controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    input {
+      padding: 10px 16px;
+      font-size: 16px;
+      background: #222;
+      border: none;
+      border-radius: 6px;
+      color: white;
+    }
+
+    button {
+      padding: 10px 16px;
+      font-size: 16px;
+      background: #4caf50;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+    }
+
+    canvas {
+      background-color: #222;
+      border: 1px solid #444;
+      border-radius: 8px;
+    }
+
+    #info {
+      margin-top: 20px;
+    }
+
+    #info h2 {
+      margin-bottom: 5px;
+      color: #00ff88;
+    }
+
+    #info p {
+      margin: 4px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Controls -->
+  <div id="controls">
+    <input id="symbolInput" placeholder="Enter symbol (e.g. AAPL)" />
+    <button onclick="checkStrategy()">Analysis</button>
+  </div>
+
+  <!-- Result Info -->
+  <div id="info"></div>
+
+  <!-- Chart -->
+  <canvas id="strategyChart" width="600" height="200"></canvas>
+
+  <script>
+    let chart;
+
+    async function checkStrategy() {
+      const symbol = document.getElementById("symbolInput").value.trim().toUpperCase();
+      if (!symbol) return;
+
+      const res = await fetch(`http://localhost:3010/api/strategy/${symbol}`);
+      const data = await res.json();
+      if (data.error) return alert(data.error);
+
+      // Display info
+      document.getElementById("info").innerHTML = `
+        <h2>${data.symbol}</h2>
+        <p>Current Price: $${data.currentPrice}</p>
+        <p><strong>Recommendation: ${data.suggestion}</strong></p>
+      `;
+
+      // Draw chart
+      const ctx = document.getElementById("strategyChart").getContext("2d");
+      if (chart) chart.destroy();
+
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: data.dates,
+          datasets: [
+            {
+              label: "Close Price",
+              data: data.closes,
+              borderColor: "white",
+              fill: false
+            },
+            {
+              label: "SMA 7",
+              data: data.sma7,
+              borderColor: "blue",
+              borderDash: [5, 5],
+              fill: false
+            },
+            {
+              label: "SMA 14",
+              data: data.sma14,
+              borderColor: "orange",
+              borderDash: [5, 5],
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: `${data.symbol} SMA Strategy Chart (${data.suggestion})`,
+              color: 'white'
+            },
+            legend: {
+              labels: {
+                color: 'white'
+              }
+            },
+            tooltip: {
+              titleColor: 'white',
+              bodyColor: 'white',
+              backgroundColor: '#222',
+              borderColor: '#888',
+              borderWidth: 1
+            }
+          },
+          scales: {
+            x: {
+              ticks: {
+                color: 'white'
+              },
+              grid: {
+                color: '#444'
+              }
+            },
+            y: {
+              ticks: {
+                color: 'white'
+              },
+              grid: {
+                color: '#444'
+              }
+            }
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>

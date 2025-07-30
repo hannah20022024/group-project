@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sell Stock</title> 
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: black;
+      padding: 2rem;
+    }
+
+    label {
+      color: white;
+    }
+
+    input, button {
+      width: 100%;
+      padding: 0.75rem;
+      margin: 0.5rem 0;
+      font-size: 1.1rem;
+      border-radius: 5px;
+      box-sizing: border-box;
+      border: 1px solid #aaa;
+      background: #222;
+      color: white;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    input:focus {
+      background-color: white;
+      color: black;
+      outline: none;
+    }
+
+    button {
+      background: #4caf50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #45a049;
+    }
+
+    #result {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #333;
+      border-radius: 8px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.1);
+      color: white;
+    }
+  </style>
+</head>
+<body>
+
+  <label for="symbol">Stock Symbol:</label>
+  <input type="text" id="symbol" placeholder="e.g. AAPL">
+
+  <label for="shares">Shares to Sell:</label>
+  <input type="number" id="shares" min="1">
+
+  <button onclick="sellStock()">Sell</button>
+
+  <div id="result"></div>
+
+  <script>
+    async function sellStock() {
+      const symbol = document.getElementById('symbol').value.toUpperCase();
+      const shares = parseFloat(document.getElementById('shares').value);
+
+      if (!symbol || isNaN(shares) || shares <= 0) {
+        alert("Please enter valid symbol and shares");
+        return;
+      }
+
+      const response = await fetch('/api/portfolio/sell', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ symbol, shares })
+      });
+
+      const data = await response.json();
+      const result = document.getElementById('result');
+
+      if (response.ok) {
+        result.innerHTML = `
+          <h3>✅ Sell Successful</h3>
+          <p>Symbol: ${data.symbol}</p>
+          <p>Shares Sold: ${data.sharesSold}</p>
+          <p>Sell Price: $${data.sellPrice.toFixed(2)}</p>
+          <p>Total Proceeds: $${data.totalProceeds.toFixed(2)}</p>
+        `;
+      } else {
+        result.innerHTML = `<p style="color:red;">❌ ${data.error}</p>`;
+      }
+    }
+  </script>
+</body>
+</html>
